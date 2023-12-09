@@ -3,7 +3,7 @@
 </script>
 
 <div>
-  <h1>My asdf adsf Extension</h1>
+  <h1>My Extension</h1>
 </div>
 
 <style>

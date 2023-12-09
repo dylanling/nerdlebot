@@ -584,7 +584,7 @@
     return {
       c() {
         div = element("div");
-        div.innerHTML = `<h1>My asdf adsf Extension</h1>`;
+        div.innerHTML = `<h1>My Extension</h1>`;
         attr(div, "class", "svelte-atf2mg");
       },
       m(target, anchor) {
