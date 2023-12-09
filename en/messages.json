@@ -1,0 +1,10 @@
+{
+  "extension_name": {
+    "message": "nerdlebot",
+    "description": "The display name for the extension."
+  },
+  "extension_description": {
+    "message": "cine2nerdle battles bot",
+    "description": "Description of what the extension does."
+  }
+}
