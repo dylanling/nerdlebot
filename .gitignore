@@ -10,3 +10,6 @@ Extension/dist
 Shared\ (Extension)/Resources/dist/
 **/xcuserdata
 **/*.xcuserstate
+
+# env vars
+.env

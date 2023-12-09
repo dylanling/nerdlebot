@@ -216,20 +216,6 @@
     return a == null ? none2 : some2(a);
   };
 
-  // node_modules/fp-ts/es6/ReadonlyNonEmptyArray.js
-  var isNonEmpty2 = isNonEmpty;
-  var extract = head;
-  var head2 = extract;
-
-  // node_modules/fp-ts/es6/ReadonlyArray.js
-  var isNonEmpty3 = isNonEmpty2;
-  var head3 = function(as3) {
-    return isNonEmpty3(as3) ? some(head2(as3)) : none;
-  };
-
-  // node_modules/fp-ts/es6/Array.js
-  var head4 = head3;
-
   // src/dom.ts
   var BATTLE_BOARD_SELECTOR = ".battle-board-movies";
   var BATTLE_MOVIE_SELECTOR = ".battle-board-movie";
@@ -251,6 +237,20 @@
     ),
     flatMap(toMovie)
   );
+
+  // node_modules/fp-ts/es6/ReadonlyNonEmptyArray.js
+  var isNonEmpty2 = isNonEmpty;
+  var extract = head;
+  var head2 = extract;
+
+  // node_modules/fp-ts/es6/ReadonlyArray.js
+  var isNonEmpty3 = isNonEmpty2;
+  var head3 = function(as3) {
+    return isNonEmpty3(as3) ? some(head2(as3)) : none;
+  };
+
+  // node_modules/fp-ts/es6/Array.js
+  var head4 = head3;
 
   // src/battle.ts
   var initialState = {
