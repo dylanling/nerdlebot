@@ -304,6 +304,7 @@
       subtree: true
     });
   };
+  console.log("active");
   awaitBattle().then(awaitNewMovies);
 })();
 //# sourceMappingURL=content.js.map

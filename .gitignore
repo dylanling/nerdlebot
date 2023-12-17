@@ -16,7 +16,6 @@ tmdb_cache/movie/*
 tmdb_cache/search/*
 tmdb_cache/person/*
 tmdb_cache/graph.json
-tmdb_cache/graph_v2.json
 
 # python
 **/__pycache__/
@@ -24,3 +23,5 @@ tmdb_cache/graph_v2.json
 
 # env vars
 .env
+
+static/

@@ -85,8 +85,8 @@ def find_director(crew):
 def parse_credits(credits, limit=None):
     if not credits:
         return []
-    cast = credits["cast"]
-    director = find_director(credits["crew"])
+    cast = credits.get("cast", [])
+    director = find_director(credits.get("crew", []))
     results = [director] + cast
     if not limit:
         return list(filter(lambda item: item, results))
@@ -119,7 +119,8 @@ def crawl(movie_id=None, person_id=None, depth=1, limit=None):
             crawl(movie_id=movie["id"], depth=depth - 1)
 
 
-crawl(movie_id=2118, depth=4, limit=4)
+# print("Uncomment line to scrape!")
+crawl(person_id=2150101, depth=4, limit=5)
 
 with open(API_FAILURES_LOG, "w") as f:
     json.dump(API_FAILURES, f)

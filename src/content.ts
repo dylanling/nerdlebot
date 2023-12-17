@@ -48,4 +48,6 @@ const awaitNewMovies = (board: O.Option<Element>) => {
   });
 };
 
+console.log("active");
+
 awaitBattle().then(awaitNewMovies);

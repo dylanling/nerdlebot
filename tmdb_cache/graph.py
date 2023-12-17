@@ -1,11 +1,6 @@
 import json
-import re
 import os
 import time
-
-from itertools import chain
-from pygtrie import CharTrie
-from pprint import pprint
 
 MOVIE_INFO_KEYS = ["id", "original_language", "popularity", "release_date", "title"]
 PERSON_INFO_KEYS = ["id", "name", "popularity"]
@@ -22,8 +17,8 @@ def find_directors(crew):
 def parse_credits(credits, keys):
     if not credits:
         return []
-    cast = credits["cast"]
-    directors = find_directors(credits["crew"])
+    cast = credits.get("cast", [])
+    directors = find_directors(credits.get("crew", []))
     return (
         {
             result.get("id"): {k: result.get(k) for k in keys}
@@ -58,6 +53,7 @@ def build_graph_from_cache():
             movie_id = filename.split("_")[0]
             data, credits = parse_credits(json.load(f), PERSON_INFO_KEYS)
             people.update(data)
+            # Tarantino issue- order as actor overriding order as director
             movie_credits.setdefault(movie_id, {}).update(credits)
             for person_id, order in credits.items():
                 people_credits.setdefault(person_id, {}).setdefault(movie_id, order)
