@@ -43,5 +43,12 @@
   "options_ui": {
     "page": "public/settings.html",
     "open_in_tab": true
-  }
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": [ "static/graph.json", "static/fuseIndex.json" ],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ]
 }
