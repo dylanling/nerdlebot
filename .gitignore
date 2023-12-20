@@ -17,4 +17,5 @@ Shared\ (Extension)/Resources/dist/
 # env vars
 .env
 
+# output files
 static/*
