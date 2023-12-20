@@ -47,8 +47,8 @@
 
   "web_accessible_resources": [
     {
-      "resources": [ "static/graph.json", "static/fuseIndex.json" ],
-      "matches": ["http://*/*", "https://*/*"]
+      "resources": [ "static/graph.json" ],
+      "matches": ["*://*.cinenerdle2.app/*"]
     }
   ]
 }

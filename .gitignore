@@ -11,17 +11,10 @@ Shared\ (Extension)/Resources/dist/
 **/xcuserdata
 **/*.xcuserstate
 
-# cached credits
-tmdb_cache/movie/*
-tmdb_cache/search/*
-tmdb_cache/person/*
-tmdb_cache/graph.json
-
 # python
 **/__pycache__/
-
 
 # env vars
 .env
 
-static/
+static/*

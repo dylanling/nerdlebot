@@ -69,7 +69,7 @@ def build_graph_from_cache():
 def load_graph():
     start = time.time()
     graph = {}
-    with open("./graph.json", "r") as f:
+    with open("./static/graph.json", "r") as f:
         graph = json.load(f)
     end = time.time()
     print(f"Loaded graph from json file in {end - start}s")

@@ -11,16 +11,17 @@ type Battle = {
 
 type Movie = {
   id: string;
-  original_language: string;
-  popularity: number;
-  release_date: string;
+  lang: string;
   title: string;
+  pop: number;
+  votes: number;
   year: string;
 };
+
 type Person = {
   id: string;
   name: string;
-  popularity: number;
+  pop: number;
 };
 
 export type { BattleMovie, Battle, Movie, Person };

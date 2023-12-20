@@ -3,21 +3,23 @@
 import type { BattleMovie, Battle, Movie } from "./types";
 import * as O from "fp-ts/Option";
 
-import Fuse from "fuse.js";
+import MiniSearch from "minisearch";
 import { battleBoard, gameOver, latestMovie } from "./dom";
 import { addMovie, initialState, lastMovie } from "./battle";
-import { makeGraph, makeFuse, type Graph, search, recommendations, formatResult } from "./graph";
+import { makeGraph, type Graph, search, makeIndex, recommendations, formatRec } from "./graph";
 
 const handleNewMovie = (battle: Battle, graph: Graph, movie: Movie): void => {
-  // console.log(`${movie.name} added`);
-  const results = recommendations(battle, movie, graph).map(formatResult).join("\n");
-  console.log(results);
+  console.log(`${movie.title} recommendations:`);
+  const results = recommendations(battle, movie, graph);
+  if (results) console.log(formatRec(results));
+  else {
+    console.log("Nothing found");
+  }
 };
 
 const awaitBattle = (): Promise<O.Option<Element>> => {
   return new Promise<O.Option<Element>>((resolve) => {
     if (O.isSome(battleBoard())) return resolve(battleBoard());
-    // return O.none;
     const observer = new MutationObserver((_) => {
       if (O.isSome(battleBoard())) {
         console.log("Battle board detected, awaiting movies");
@@ -34,7 +36,7 @@ const awaitBattle = (): Promise<O.Option<Element>> => {
 };
 
 const awaitNewMovies =
-  (g: Promise<Graph>, f: Promise<Fuse<Movie>>) => (board: O.Option<Element>) => {
+  (g: Promise<Graph>, i: Promise<MiniSearch<Movie>>) => (board: O.Option<Element>) => {
     let battle: Battle = initialState;
 
     const observer = new MutationObserver((mutations) => {
@@ -51,8 +53,8 @@ const awaitNewMovies =
         if (topMovie !== lastMovie(battle)) {
           O.map((battleMovie: BattleMovie) => {
             g.then((graph) =>
-              f.then((fuse) => {
-                const movie = search(fuse, battleMovie);
+              i.then((index) => {
+                const movie = search(index, battleMovie);
                 battle = addMovie(battle, battleMovie, movie);
                 handleNewMovie(battle, graph, movie);
               }),
@@ -68,17 +70,8 @@ const awaitNewMovies =
     });
   };
 
-const g = makeGraph(chrome.runtime.getURL("static/graph.json"));
-const f = g.then((graph) => makeFuse(chrome.runtime.getURL("static/fuseIndex.json"), graph));
+const graph = makeGraph(chrome.runtime.getURL("static/graph.json"));
+const index = graph.then(makeIndex);
 
-// graph(chrome.runtime.getURL("static/graph.json")).then((g) => {
-//   fuse(chrome.runtime.getURL("static/fuseIndex.json"), g).then((searchIndex) => {
-//     const results = searchIndex.search(
-//       { $and: [{ year: "2012" }, { title: "avengers" }] },
-//       { limit: 1 },
-//     );
-//     console.log(results[0].item.release_date);
-//   });
-// });
-const run = () => awaitBattle().then(awaitNewMovies(g, f));
+const run = () => awaitBattle().then(awaitNewMovies(graph, index));
 run();
