@@ -10,6 +10,7 @@
     "build:chrome": "node scripts/package-extension.js",
     "build:firefox": "node scripts/firefox-build.js",
     "graph": "node scripts/graph.js",
+    "graphv2": "node scripts/graphv2.js",
     "scrape": "node scripts/scrape.js",
     "index": "node scripts/fuse-index.js"
   },

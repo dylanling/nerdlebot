@@ -1,25 +1,30 @@
 /*global browser*/
 
-import type { BattleMovie, Battle, Movie } from "./types";
 import * as O from "fp-ts/Option";
 
 import MiniSearch from "minisearch";
-import { battleBoard, gameOver, latestMovie } from "./dom";
-import { addMovie, initialState, lastMovie } from "./battle";
-import { makeGraph, type Graph, search, makeIndex, recommendations, formatRec } from "./graph";
+import { battleBoard, latestMovie } from "./battlev2/dom";
+import type { Battle, BattleMovie, Movie, SearchGraph, WinConCache } from "./battlev2/types";
+import { addMovie, initialState, lastMovie } from "./battlev2/battle";
+import { latifahCache, makeGraph, makeIndex, searchForBattleMovie } from "./battlev2/graph";
+import { formatMovie, makeRecommendation } from "./battlev2/recommendation";
 
-const handleNewMovie = (battle: Battle, graph: Graph, movie: Movie): void => {
-  console.log(`${movie.title} recommendations:`);
-  const results = recommendations(battle, movie, graph);
-  if (results) console.log(formatRec(results));
-  else {
-    console.log("Nothing found");
-  }
+const handleNewMovie = (
+  battle: Battle,
+  graph: SearchGraph,
+  winConCache: WinConCache,
+  movie: Movie,
+): void => {
+  makeRecommendation(battle, graph, winConCache, movie);
 };
 
 const awaitBattle = (): Promise<O.Option<Element>> => {
+  console.log("Awaiting battle start!");
   return new Promise<O.Option<Element>>((resolve) => {
-    if (O.isSome(battleBoard())) return resolve(battleBoard());
+    if (O.isSome(battleBoard())) {
+      console.log("Battle board detected, awaiting movies");
+      return resolve(battleBoard());
+    }
     const observer = new MutationObserver((_) => {
       if (O.isSome(battleBoard())) {
         console.log("Battle board detected, awaiting movies");
@@ -36,28 +41,26 @@ const awaitBattle = (): Promise<O.Option<Element>> => {
 };
 
 const awaitNewMovies =
-  (g: Promise<Graph>, i: Promise<MiniSearch<Movie>>) => (board: O.Option<Element>) => {
+  (g: Promise<SearchGraph>, i: Promise<MiniSearch<Movie>>, c: Promise<WinConCache>) =>
+  (board: O.Option<Element>) => {
     let battle: Battle = initialState;
 
     const observer = new MutationObserver((mutations) => {
       if (mutations.length > 2) {
-        // proxy for non keypress idk how else
-        if (O.isSome(O.flatMap((b: Element) => gameOver(b))(board))) {
-          console.log("Game over");
-          observer.disconnect();
-          run();
-        }
-
         const topMovie = O.flatMap(board, latestMovie);
 
         if (topMovie !== lastMovie(battle)) {
           O.map((battleMovie: BattleMovie) => {
             g.then((graph) =>
-              i.then((index) => {
-                const movie = search(index, battleMovie);
-                battle = addMovie(battle, battleMovie, movie);
-                handleNewMovie(battle, graph, movie);
-              }),
+              i.then((index) =>
+                c.then((cache) => {
+                  console.log(`Saw ${battleMovie?.name} (${battleMovie?.year}) on board`);
+                  const movie = searchForBattleMovie(index, battleMovie);
+                  console.log(`Found movie: ${formatMovie(movie)}`);
+                  battle = addMovie(battle, battleMovie, movie);
+                  handleNewMovie(battle, graph, cache, movie);
+                }),
+              ),
             );
           })(topMovie);
         }
@@ -70,8 +73,8 @@ const awaitNewMovies =
     });
   };
 
-const graph = makeGraph(chrome.runtime.getURL("static/graph.json"));
+const graph = makeGraph(chrome.runtime.getURL("static/graphv2.json"));
 const index = graph.then(makeIndex);
-
-const run = () => awaitBattle().then(awaitNewMovies(graph, index));
+const cache = graph.then(latifahCache);
+const run = () => awaitBattle().then(awaitNewMovies(graph, index, cache));
 run();

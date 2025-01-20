@@ -1,10 +1,8 @@
 import * as O from "fp-ts/Option";
-
-import type { BattleMovie } from "./types";
+import type { BattleMovie } from "../types";
 
 const BATTLE_BOARD_SELECTOR = "#battle-board";
-const BATTLE_MOVIE_SELECTOR = ".battle-board-movie";
-const GAME_OVER_SELECTOR = ".battle-board-game-over";
+const BATTLE_MOVIE_SELECTOR = "div[class*='leading']";
 
 const battleBoard = (): O.Option<Element> =>
   O.fromNullable(document.querySelector(BATTLE_BOARD_SELECTOR));
@@ -28,6 +26,4 @@ const latestMovie = (board: Element) => {
   return O.flatMap(c, toMovie);
 };
 
-const gameOver = (board: Element) => O.fromNullable(board.querySelector(GAME_OVER_SELECTOR));
-
-export { battleBoard, latestMovie, gameOver };
+export { battleBoard, latestMovie };

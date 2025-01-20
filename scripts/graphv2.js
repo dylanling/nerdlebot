@@ -9,9 +9,6 @@ const MiniSearch = require("minisearch");
 program
   .option("-d, --debug", "debug")
   .option("-r, --raw", "should build raw graph")
-  .option("-c, --credits", "should annotate credits")
-  .option("-s, --score", "should annotate scores")
-  .option("-a, --annotate", "should do full annotation with recommendations")
   .option("-t, --title <string>", "movie name")
   .option("-y, --year <string>", "movie year");
 
@@ -41,17 +38,6 @@ const GENRES = {
   10770: "TV Movie",
 };
 
-/**
-
-const fs = require("fs-extra");
-const { readFile } = require("fs/promises");
-const _ = require("lodash");
-const { program } = require("commander");
-const MiniSearch = require("minisearch");
-var graph = await readFile("./static/graphv2.json", "utf8").then(JSON.parse);
-
- */
-
 const IGNORED_GENRES = [99, 10770];
 
 const TARANTINO = "138";
@@ -61,8 +47,7 @@ const DJANGO_UNCHAINED_FILE = `${DJANGO_UNCHAINED}_credits.json`;
 
 const MOVIE_API_RESPONSES_DIRECTORY = "./static/movie";
 const PERSON_API_RESPONSES_DIRECTORY = "./static/person";
-const RAW_GRAPH_OUTPUT_FILE = "./static/rawGraph.json";
-const RAW_GRAPH_V2_OUTPUT_FILE = "./static/graphv2.json";
+const RAW_GRAPH_OUTPUT_FILE = "./static/graphv2.json";
 const CREDITS_GRAPH_OUTPUT_FILE = "./static/creditsGraph.json";
 const SCORES_GRAPH_OUTPUT_FILE = "./static/scoresGraph.json";
 const FINAL_GRAPH_OUTPUT_FILE = "./static/graph.json";
@@ -76,13 +61,13 @@ const KILLSHOT_MOVIE_CUTOFF = 5;
 const OTHER_MOVIE_CUTOFF = 4;
 // need to read from file on every chain
 
-async function buildGraph() {
-  console.time("buildGraph");
+async function buildRawGraph() {
+  console.time("buildRawGraph");
 
   if (!options.raw) {
     return readFile(RAW_GRAPH_OUTPUT_FILE, "utf8").then((data) => {
       const graph = JSON.parse(data);
-      console.timeEnd("buildGraph");
+      console.timeEnd("buildRawGraph");
       return graph;
     });
   }
@@ -179,17 +164,15 @@ async function buildGraph() {
     people: people,
     movieCredits: movieCredits,
     peopleCredits: peopleCredits,
-    partialMovieCredits: partialMovieCredits,
-    partialPeopleCredits: partialPeopleCredits,
-    recommendations: {},
+    // partialMovieCredits: partialMovieCredits,
+    // partialPeopleCredits: partialPeopleCredits,
   };
   if (options.debug) {
     console.log(JSON.stringify(graph, null, 2));
   } else {
     fs.writeFileSync(RAW_GRAPH_OUTPUT_FILE, JSON.stringify(graph));
-    fs.writeFileSync(RAW_GRAPH_V2_OUTPUT_FILE, JSON.stringify(graph));
   }
-  console.timeEnd("buildGraph");
+  console.timeEnd("buildRawGraph");
   return graph;
 }
 
@@ -277,12 +260,6 @@ const primaryLanguage = (personId, graph) => {
   return _.head(_(langs).countBy().entries().maxBy(_.last)) || "en";
 };
 
-const scoreWithout = (person, movie, graph) => {
-  const { cast, crew } = _.get(graph.movieCredits, movie.id, DEFAULT_CREDITS);
-  const scores = [...cast, ...crew].map((personId) => _.get(graph.people, personId, {}).score || 0);
-  return _.sum(scores) - person.score;
-};
-
 const annotateScores = (graph) => {
   console.time("annotateScores");
   if (!options.score) {
@@ -305,79 +282,23 @@ const annotateScores = (graph) => {
   return graph;
 };
 
-const killshots = (person, movies, graph) => {
-  return _.sortBy(movies, (movie) => scoreWithout(person, movie, graph));
-};
-
-const personRecommendations = (person, graph) => {
-  const { cast, crew } = _.get(graph.peopleCredits, person.id, DEFAULT_CREDITS);
-  const movies = [...cast, ...crew]
-    .map((movieId) => _.get(graph.movies, movieId, {}))
-    .filter((movie) => (movie.votes || 0) >= MIN_VOTE_CUTOFF);
-  const popular = _.sortBy(movies, (movie) => (movie.votes || 0) * -1);
-  const top = popular.slice(0, POPULAR_MOVIE_CUTOFF).map((movie) => movie.id);
-  const other = popular
-    .filter(
-      (movie) => !_.includes(top, movie.id) && (movie.lang != "en" || _.includes(movie.genres, 16)),
-    )
-    .slice(0, OTHER_MOVIE_CUTOFF)
-    .map((movie) => movie.id);
-  const ks = killshots(person, movies, graph)
-    .slice(0, KILLSHOT_MOVIE_CUTOFF)
-    .map((movie) => movie.id);
-  return {
-    id: person.id,
-    top: top,
-    ks: ks,
-    other: other,
-  };
-};
-
-const recommendations = (movie, graph) => {
-  const { cast, crew } = _.get(graph.movieCredits, movie.id, DEFAULT_CREDITS);
-  const sorted = _.sortBy(
-    cast.map((personId) => _.get(graph.people, personId, {})),
-    (person) => person.score * -1,
-  );
-  const crewPeople = crew
-    .map((personId) => _.get(graph.people, personId, {}))
-    .map((person) => personRecommendations(person, graph));
-  const top = sorted
-    .slice(0, POPULAR_PERSON_CUTOFF)
-    .map((person) => personRecommendations(person, graph));
-  const fc = sorted
-    .filter((person) => person.lang != "en")
-    .slice(0, POPULAR_FC_PERSON_CUTOFF)
-    .map((person) => personRecommendations(person, graph));
-  return {
-    crew: crewPeople,
-    top: top,
-    fc: fc,
-  };
-};
-
-const annotateRecs = (graph) => {
-  console.time("annotateRecs");
-  if (!options.annotate) {
-    return readFile(FINAL_GRAPH_OUTPUT_FILE, "utf8").then((data) => {
-      const graph = JSON.parse(data);
-      console.timeEnd("annotateRecs");
-      return graph;
-    });
-  }
-
-  _.values(graph.movies).forEach((movie) => {
-    const recs = recommendations(movie, graph);
-    _.set(graph, ["recommendations", movie.id], recs);
-  });
+const buildGraph = (graph) => {
+  console.time("buildGraph");
+  // if (!options.annotate) {
+  //   return readFile(FINAL_GRAPH_OUTPUT_FILE, "utf8").then((data) => {
+  //     const graph = JSON.parse(data);
+  //     console.timeEnd("buildGraph");
+  //     return graph;
+  //   });
+  // }
 
   const optimizedGraph = {
     movies: graph.movies,
     people: graph.people,
-    recommendations: graph.recommendations,
   };
+
   fs.writeFileSync(FINAL_GRAPH_OUTPUT_FILE, JSON.stringify(optimizedGraph));
-  console.timeEnd("annotateRecs");
+  console.timeEnd("buildGraph");
   return graph;
 };
 
@@ -428,10 +349,10 @@ const handleSearch = (graphAndResult) => {
   return graph;
 };
 
-buildGraph()
-  .then(annotateCredits)
-  .then(annotateScores)
-  .then(annotateRecs)
-  .then(buildIndex)
-  .then(search)
-  .then(handleSearch);
+buildRawGraph();
+//   .then(annotateCredits)
+//   .then(annotateScores)
+//   .then(buildGraph)
+//   .then(buildIndex)
+//   .then(search)
+//   .then(handleSearch);
