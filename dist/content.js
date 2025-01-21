@@ -514,10 +514,10 @@
       "use strict";
       var baseValues = require_baseValues();
       var keys2 = require_keys();
-      function values2(object) {
+      function values3(object) {
         return object == null ? [] : baseValues(object, keys2(object));
       }
-      module.exports = values2;
+      module.exports = values3;
     }
   });
 
@@ -1359,10 +1359,10 @@
   var require_arrayPush = __commonJS({
     "node_modules/lodash/_arrayPush.js"(exports, module) {
       "use strict";
-      function arrayPush(array, values2) {
-        var index2 = -1, length = values2.length, offset = array.length;
+      function arrayPush(array, values3) {
+        var index2 = -1, length = values3.length, offset = array.length;
         while (++index2 < length) {
-          array[offset + index2] = values2[index2];
+          array[offset + index2] = values3[index2];
         }
         return array;
       }
@@ -1542,11 +1542,11 @@
       var MapCache = require_MapCache();
       var setCacheAdd = require_setCacheAdd();
       var setCacheHas = require_setCacheHas();
-      function SetCache(values2) {
-        var index2 = -1, length = values2 == null ? 0 : values2.length;
+      function SetCache(values3) {
+        var index2 = -1, length = values3 == null ? 0 : values3.length;
         this.__data__ = new MapCache();
         while (++index2 < length) {
-          this.add(values2[index2]);
+          this.add(values3[index2]);
         }
       }
       SetCache.prototype.add = SetCache.prototype.push = setCacheAdd;
@@ -2882,10 +2882,10 @@
       "use strict";
       var baseHas = require_baseHas();
       var hasPath = require_hasPath();
-      function has3(object, path) {
+      function has4(object, path) {
         return object != null && hasPath(object, path, baseHas);
       }
-      module.exports = has3;
+      module.exports = has4;
     }
   });
 
@@ -3062,8 +3062,8 @@
       var noop = require_noop();
       var setToArray = require_setToArray();
       var INFINITY = 1 / 0;
-      var createSet = !(Set2 && 1 / setToArray(new Set2([, -0]))[1] == INFINITY) ? noop : function(values2) {
-        return new Set2(values2);
+      var createSet = !(Set2 && 1 / setToArray(new Set2([, -0]))[1] == INFINITY) ? noop : function(values3) {
+        return new Set2(values3);
       };
       module.exports = createSet;
     }
@@ -3323,10 +3323,10 @@
       var isArrayLike = require_isArrayLike();
       var isString = require_isString();
       var toInteger = require_toInteger();
-      var values2 = require_values();
+      var values3 = require_values();
       var nativeMax = Math.max;
       function includes2(collection, value, fromIndex, guard) {
-        collection = isArrayLike(collection) ? collection : values2(collection);
+        collection = isArrayLike(collection) ? collection : values3(collection);
         fromIndex = fromIndex && !guard ? toInteger(fromIndex) : 0;
         var length = collection.length;
         if (fromIndex < 0) {
@@ -5464,12 +5464,8 @@
   var import_uniq = __toESM(require_uniq());
 
   // src/battlev2/constants.ts
-  var CAST_SEARCH_LIMIT = 8;
-  var MOVIE_SEARCH_LIMIT = 20;
-  var SUB_MOVIE_SEARCH_LIMIT = 3;
-  var SUB_CAST_SEARCH_LIMIT = 4;
-  var RECOMMENDATION_LIMIT = 30;
-  var EXTRA_RECOMMENDATION_LIMIT = 100;
+  var SUB_MOVIE_SEARCH_LIMIT = 4;
+  var RECOMMENDATION_LIMIT = 35;
   var QUEEN_LATIFAH = "15758";
   var UNKNOWN_MOVIE_CREDITS = {
     cast: [],
@@ -5547,59 +5543,52 @@
   var import_take2 = __toESM(require_take());
   var import_sortBy2 = __toESM(require_sortBy());
   var import_reverse2 = __toESM(require_reverse());
+  var import_values2 = __toESM(require_values());
+  var import_has2 = __toESM(require_has());
   var formatMovie = (movie) => `${movie?.title} (${movie?.year})`;
-  var formatRec = (movie, links2) => `${formatMovie(movie)} via ${links2.map((p) => p.name).join(", ")}`;
-  var links = (source, target, graph2) => {
-    const sourcePeople = getMovieCrewAndCast(source, graph2);
-    const targetPeople = getMovieCrewAndCast(target, graph2);
-    return (0, import_intersectionBy.default)(sourcePeople, targetPeople, (p) => p.id);
-  };
   var makeRecommendation = (battle, graph2, cache2, movie) => {
     console.log(`Recommending for ${formatMovie(movie)}`);
     const crewAndCast = getMovieCrewAndCast(movie, graph2).filter(
       (person) => person.id !== cache2.personId
     );
+    const recs = {};
+    const allMoviesByPerson = {};
+    crewAndCast.forEach((person) => {
+      allMoviesByPerson[person.id] = getPersonsMovies(person, graph2);
+    });
+    const topPeople = (0, import_reverse2.default)((0, import_sortBy2.default)(crewAndCast, (p) => p.pop));
+    topPeople.forEach((person) => {
+      if ((0, import_uniq2.default)((0, import_flatten2.default)((0, import_values2.default)(recs))).length < RECOMMENDATION_LIMIT) {
+        recs[person.id] = (0, import_take2.default)(
+          (0, import_reverse2.default)(
+            (0, import_sortBy2.default)(
+              (0, import_get2.default)(allMoviesByPerson, person.id).filter((m) => !(0, import_includes.default)(battle.usedMovieIds, m.id)),
+              (m) => m.pop
+            )
+          ),
+          SUB_MOVIE_SEARCH_LIMIT
+        );
+      }
+    });
+    console.log("\n\nRecommendations\n====================");
+    (0, import_keys.default)(recs).forEach((pid) => {
+      (0, import_get2.default)(recs, pid).forEach((m) => {
+        console.log(`  ${formatMovie(m)} via ${(0, import_get2.default)(graph2.people, pid).name}`);
+      });
+    });
     const winConPeople = (0, import_intersection.default)(
       crewAndCast.map((c) => c.id),
       (0, import_keys.default)(cache2.people)
-    );
-    const winconMovies = (0, import_uniq2.default)((0, import_flatten2.default)(winConPeople.map((id) => (0, import_get2.default)(cache2.people, id, [])))).filter(
-      (m) => !(0, import_includes.default)(battle.usedMovieIds, m.id)
-    );
-    const topCastCrew = (0, import_take2.default)((0, import_reverse2.default)((0, import_sortBy2.default)(crewAndCast, (p) => p.pop)), SUB_CAST_SEARCH_LIMIT);
-    const topRecs = (0, import_uniq2.default)(
-      (0, import_flatten2.default)(
-        topCastCrew.map((person) => (0, import_take2.default)(getPersonsMovies(person, graph2), SUB_MOVIE_SEARCH_LIMIT))
-      )
-    );
-    const extraRecs = (0, import_take2.default)(
-      (0, import_reverse2.default)(
-        (0, import_sortBy2.default)(
-          (0, import_uniq2.default)(
-            (0, import_flatten2.default)(
-              (0, import_take2.default)(crewAndCast, CAST_SEARCH_LIMIT).map(
-                (person) => (0, import_take2.default)(getPersonsMovies(person, graph2), MOVIE_SEARCH_LIMIT)
-              )
-            )
-          ),
-          (m) => m.pop
-        )
-      ),
-      EXTRA_RECOMMENDATION_LIMIT
-    ).filter((m) => !(0, import_includes.default)(battle.usedMovieIds, m.id));
-    const recommendations = (0, import_take2.default)([...topRecs, ...extraRecs], RECOMMENDATION_LIMIT);
-    console.log("Recommendations:");
-    recommendations.forEach((m) => {
-      const via = links(movie, m, graph2);
-      console.log(`  ${formatRec(m, via)}`);
-    });
-    if (!(0, import_isEmpty.default)(winconMovies)) {
-      console.log("Win condition movies:");
+    ).map((pid) => (0, import_get2.default)(graph2.people, pid));
+    console.log("\n\nWincons\n====================");
+    winConPeople.forEach((person) => {
+      const winconMovies = (0, import_get2.default)(allMoviesByPerson, person.id).filter(
+        (m) => (0, import_has2.default)(cache2.movies, m.id) && !(0, import_includes.default)(battle.usedMovieIds, m.id)
+      );
       winconMovies.forEach((m) => {
-        const via = links(movie, m, graph2);
-        console.log(`  ${formatRec(m, via)}`);
+        console.log(`  ${formatMovie(m)} via ${person.name}`);
       });
-    }
+    });
   };
 
   // src/content.ts
