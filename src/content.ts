@@ -4,18 +4,22 @@ import * as O from "fp-ts/Option";
 
 import MiniSearch from "minisearch";
 import { battleBoard, latestMovie } from "./battlev2/dom";
-import type { Battle, BattleMovie, Movie, SearchGraph, WinConCache } from "./battlev2/types";
+import type {
+  Battle,
+  BattleMovie,
+  Movie,
+  SearchGraph,
+  WinConCache,
+  WinCon,
+} from "./battlev2/types";
 import { addMovie, initialState, lastMovie } from "./battlev2/battle";
-import { latifahCache, makeGraph, makeIndex, searchForBattleMovie } from "./battlev2/graph";
-import { formatMovie, makeRecommendation } from "./battlev2/recommendation";
+import { personCache, makeGraph, makeIndex, searchForBattleMovie } from "./battlev2/graph";
+import { formatMovie, printRecommendations, recommendations } from "./battlev2/recommendation";
+import { FRANCES_MCDORMAND, ZENDAYA } from "./battlev2/constants";
 
-const handleNewMovie = (
-  battle: Battle,
-  graph: SearchGraph,
-  winConCache: WinConCache,
-  movie: Movie,
-): void => {
-  makeRecommendation(battle, graph, winConCache, movie);
+const handleNewMovie = (battle: Battle, graph: SearchGraph, movie: Movie, wincon: WinCon): void => {
+  // makeRecommendation(battle, graph, winConCache, movie);
+  printRecommendations(recommendations(battle, graph, movie, wincon));
 };
 
 const awaitBattle = (): Promise<O.Option<Element>> => {
@@ -41,7 +45,7 @@ const awaitBattle = (): Promise<O.Option<Element>> => {
 };
 
 const awaitNewMovies =
-  (g: Promise<SearchGraph>, i: Promise<MiniSearch<Movie>>, c: Promise<WinConCache>) =>
+  (g: Promise<SearchGraph>, i: Promise<MiniSearch<Movie>>, w: Promise<WinCon>) =>
   (board: O.Option<Element>) => {
     let battle: Battle = initialState;
 
@@ -53,12 +57,12 @@ const awaitNewMovies =
           O.map((battleMovie: BattleMovie) => {
             g.then((graph) =>
               i.then((index) =>
-                c.then((cache) => {
+                w.then((wincon) => {
                   console.log(`Saw ${battleMovie?.name} (${battleMovie?.year}) on board`);
                   const movie = searchForBattleMovie(index, battleMovie);
                   console.log(`Found movie: ${formatMovie(movie)}`);
                   battle = addMovie(battle, battleMovie, movie);
-                  handleNewMovie(battle, graph, cache, movie);
+                  handleNewMovie(battle, graph, movie, wincon);
                 }),
               ),
             );
@@ -75,6 +79,13 @@ const awaitNewMovies =
 
 const graph = makeGraph(chrome.runtime.getURL("static/graphv2.json"));
 const index = graph.then(makeIndex);
-const cache = graph.then(latifahCache);
-const run = () => awaitBattle().then(awaitNewMovies(graph, index, cache));
+// const cache = graph.then(personCache(FRANCES_MCDORMAND));
+const wincon = graph.then((g) => {
+  return {
+    genre: O.some("Romance"),
+    cache: O.none,
+  } as WinCon;
+});
+// const winconPromise = graph.then(wincon)
+const run = () => awaitBattle().then(awaitNewMovies(graph, index, wincon));
 run();

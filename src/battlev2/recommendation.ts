@@ -1,7 +1,20 @@
 import { getMovieCrewAndCast, getPersonsMovies } from "./graph";
-import type { Battle, Movie, Person, SearchGraph, WinConCache } from "./types";
+import type {
+  Battle,
+  Genre,
+  Movie,
+  Person,
+  Recommendation,
+  Recommendations,
+  SearchGraph,
+  WinCon,
+  WinConCache,
+} from "./types";
+
+import * as O from "fp-ts/Option";
 
 import keys from "lodash/keys";
+import keyBy from "lodash/keyBy";
 import intersection from "lodash/intersection";
 import intersectionBy from "lodash/intersectionBy";
 import isEmpty from "lodash/isEmpty";
@@ -9,32 +22,159 @@ import get from "lodash/get";
 import flatten from "lodash/flatten";
 import includes from "lodash/includes";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import take from "lodash/take";
 import sortBy from "lodash/sortBy";
 import reverse from "lodash/reverse";
 import values from "lodash/values";
 import has from "lodash/has";
+import reduce from "lodash/reduce";
+import toPairs from "lodash/toPairs";
+import chunk from "lodash/chunk";
+import groupBy from "lodash/groupBy";
 import {
   CAST_SEARCH_LIMIT,
   EXTRA_RECOMMENDATION_LIMIT,
+  GENRE_IDS,
   MOVIE_SEARCH_LIMIT,
   RECOMMENDATION_LIMIT,
   SUB_CAST_SEARCH_LIMIT,
   SUB_MOVIE_SEARCH_LIMIT,
 } from "./constants";
+import { pipe } from "fp-ts/lib/function";
+import { mapValues } from "lodash";
 
-export const formatMovie = (movie: Movie) => `${movie?.title} (${movie?.year})`;
+export const formatMovie = (movie?: Movie) => (movie ? `${movie.title} (${movie.year})` : "");
 
-// export const formatRec = (movie: Movie, links: Person[]) =>
-//   `${formatMovie(movie)} via ${links.map((p) => p.name).join(", ")}`;
+export const printRecommendations = (recs: Recommendations): void => {
+  const { nonWincon, wincon } = recs;
+  const nonWinconByPerson = groupBy(nonWincon, (r) => r.link.name);
+  console.log("========= Non genre =========");
+  console.log(
+    toPairs(nonWinconByPerson)
+      .map(([name, recs]) => {
+        return [
+          name,
+          ...chunk(recs, 2).map(
+            ([m1, m2]) => `    ${formatMovie(m1?.rec).padEnd(40)}${formatMovie(m2?.rec)}`,
+          ),
+        ].join("\n");
+      })
+      .join("\n"),
+  );
+  const winconByPerson = groupBy(wincon, (r) => r.link.name);
+  console.log("========= Genre =========");
+  console.log(
+    toPairs(winconByPerson)
+      .map(([name, recs]) => {
+        return [
+          name,
+          ...chunk(recs, 2).map(
+            ([m1, m2]) => `    ${formatMovie(m1?.rec).padEnd(40)}${formatMovie(m2?.rec)}`,
+          ),
+        ].join("\n");
+      })
+      .join("\n"),
+  );
+};
 
-// export const links = (source: Movie, target: Movie, graph: SearchGraph): Person[] => {
-//   const sourcePeople = getMovieCrewAndCast(source, graph);
-//   const targetPeople = getMovieCrewAndCast(target, graph);
-//   return intersectionBy(sourcePeople, targetPeople, (p) => p.id);
-// };
+const defaultRecommendations = (
+  battle: Battle,
+  graph: SearchGraph,
+  movie: Movie,
+): Recommendations => {
+  return {
+    nonWincon: [],
+    wincon: [],
+  };
+};
 
-export const makeRecommendation = (
+const recommendationsForGenre = (
+  battle: Battle,
+  graph: SearchGraph,
+  movie: Movie,
+  genre: Genre,
+): Recommendations => {
+  const crewAndCast = getMovieCrewAndCast(movie, graph);
+
+  const moviesByPerson: Record<string, Movie[]> = mapValues(
+    keyBy(crewAndCast, (p) => p.id),
+    (p) => getPersonsMovies(p, graph),
+  );
+
+  const topBilled = take(crewAndCast, 3);
+  const mostPopular = take(reverse(sortBy(crewAndCast, (p) => p.pop)), 8);
+  const people: Record<string, Person> = keyBy(
+    take(
+      uniqBy([...topBilled, ...mostPopular], (p) => p.id),
+      8,
+    ),
+    (p) => p.id,
+  );
+
+  const allRecommendations: Recommendations[] = values(people).map((p) => {
+    const personMovies = reverse(
+      sortBy(
+        get(moviesByPerson, p.id).filter((m) => !includes(battle.usedMovieIds, m.id)),
+        (m) => m.pop,
+      ),
+    );
+    const genreMovies = take(
+      personMovies.filter((m) => includes(m.genres, GENRE_IDS[genre])),
+      6,
+    );
+    const nonGenreMovies = take(
+      personMovies.filter((m) => !includes(m.genres, GENRE_IDS[genre])),
+      6,
+    );
+    return {
+      nonWincon: nonGenreMovies.map((m) => {
+        return { source: movie, rec: m, link: p };
+      }),
+      wincon: genreMovies.map((m) => {
+        return { source: movie, rec: m, link: p };
+      }),
+    };
+  });
+
+  return reduce(
+    allRecommendations,
+    (a: Recommendations, b: Recommendations) => {
+      return {
+        nonWincon: [...a.nonWincon, ...b.nonWincon],
+        wincon: [...a.wincon, ...b.wincon],
+      };
+    },
+    { nonWincon: [], wincon: [] },
+  );
+};
+
+const recommendationsForTarget = (
+  battle: Battle,
+  graph: SearchGraph,
+  movie: Movie,
+  genre: Genre,
+): Recommendations => {
+  return {
+    nonWincon: [],
+    wincon: [],
+  };
+};
+
+export const recommendations = (
+  battle: Battle,
+  graph: SearchGraph,
+  movie: Movie,
+  wincon: WinCon,
+): Recommendations => {
+  return pipe(
+    wincon.genre,
+    O.map((g) => recommendationsForGenre(battle, graph, movie, g)),
+    O.getOrElse(() => defaultRecommendations(battle, graph, movie)),
+  );
+};
+
+const makeRecommendation = (
   battle: Battle,
   graph: SearchGraph,
   cache: WinConCache,
@@ -85,47 +225,4 @@ export const makeRecommendation = (
       console.log(`  ${formatMovie(m)} via ${person.name}`);
     });
   });
-
-  // const winconMovies = uniq(flatten(winConPeople.map((id) => get(cache.people, id, [])))).filter(
-  //   (m) => !includes(battle.usedMovieIds, m.id),
-  // );
-
-  // const topCastCrew = take(reverse(sortBy(crewAndCast, (p) => p.pop)), SUB_CAST_SEARCH_LIMIT);
-  // const topRecs = uniq(
-  //   flatten(
-  //     topCastCrew.map((person) => take(getPersonsMovies(person, graph), SUB_MOVIE_SEARCH_LIMIT)),
-  //   ),
-  // );
-
-  // const extraRecs = take(
-  //   reverse(
-  //     sortBy(
-  //       uniq(
-  //         flatten(
-  //           take(crewAndCast, CAST_SEARCH_LIMIT).map((person) =>
-  //             take(getPersonsMovies(person, graph), MOVIE_SEARCH_LIMIT),
-  //           ),
-  //         ),
-  //       ),
-  //       (m) => m.pop,
-  //     ),
-  //   ),
-  //   EXTRA_RECOMMENDATION_LIMIT,
-  // ).filter((m) => !includes(battle.usedMovieIds, m.id));
-
-  // const recommendations = take([...topRecs, ...extraRecs], RECOMMENDATION_LIMIT);
-
-  // console.log("Recommendations:");
-  // recommendations.forEach((m) => {
-  //   const via = links(movie, m, graph);
-  //   console.log(`  ${formatRec(m, via)}`);
-  // });
-
-  // if (!isEmpty(winconMovies)) {
-  //   console.log("Win condition movies:");
-  //   winconMovies.forEach((m) => {
-  //     const via = links(movie, m, graph);
-  //     console.log(`  ${formatRec(m, via)}`);
-  //   });
-  // }
 };

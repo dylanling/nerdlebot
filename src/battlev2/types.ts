@@ -1,3 +1,5 @@
+import type { Option } from "fp-ts/lib/Option";
+
 export type BattleMovie = {
   name: string;
   year: string;
@@ -44,14 +46,45 @@ export type SearchGraph = {
   peopleCredits: Record<string, PersonCredit>;
 };
 
+export type Genre =
+  | "Adventure"
+  | "Fantasy"
+  | "Animation"
+  | "Drama"
+  | "Horror"
+  | "Action"
+  | "Comedy"
+  | "History"
+  | "Western"
+  | "Thriller"
+  | "Crime"
+  | "Documentary"
+  | "Science Fiction"
+  | "Mystery"
+  | "Music"
+  | "Romance"
+  | "Family"
+  | "War"
+  | "TV Movie";
+
 export type Recommendation = {
   source: Movie;
   rec: Movie;
-  via: Person[];
+  link: Person;
 };
 
 export type WinConCache = {
-  personId?: string;
+  personId: string;
   movies: Record<string, Movie>;
   people: Record<string, Movie[]>;
+};
+
+export type WinCon = {
+  genre: Option<Genre>;
+  cache: Option<WinConCache>;
+};
+
+export type Recommendations = {
+  nonWincon: Recommendation[];
+  wincon: Recommendation[];
 };

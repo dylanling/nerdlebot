@@ -14,12 +14,7 @@ import uniq from "lodash/uniq";
 
 import type { BattleMovie, Movie, Person, SearchGraph, WinConCache } from "./types";
 
-import {
-  CAST_SEARCH_LIMIT,
-  QUEEN_LATIFAH,
-  UNKNOWN_MOVIE_CREDITS,
-  UNKNOWN_PERSON_CREDITS,
-} from "./constants";
+import { UNKNOWN_MOVIE_CREDITS, UNKNOWN_PERSON_CREDITS } from "./constants";
 
 export const makeGraph = (url: string): Promise<SearchGraph> => {
   return fetch(url).then<SearchGraph>((response) => response.json());
@@ -59,28 +54,30 @@ export const getPersonsMovies = (person: Person, graph: SearchGraph): Movie[] =>
   return reverse(sortBy([...crew, ...cast], (m) => m.pop));
 };
 
-export const latifahCache = (graph: SearchGraph): WinConCache => {
-  console.log("Constructing cache for Queen Latifah");
-  const latifah = get(graph.people, QUEEN_LATIFAH);
-  const movies = mapValues(
-    groupBy(getPersonsMovies(latifah, graph), (m) => m.id),
-    first,
-  ) as Record<string, Movie>;
+export const personCache =
+  (personId: string) =>
+  (graph: SearchGraph): WinConCache => {
+    const person = get(graph.people, personId);
+    console.log(`Constructing cache for ${person.name}`);
+    const movies = mapValues(
+      groupBy(getPersonsMovies(person, graph), (m) => m.id),
+      first,
+    ) as Record<string, Movie>;
 
-  const people: Record<string, Movie[]> = {};
+    const people: Record<string, Movie[]> = {};
 
-  values(movies).forEach((movie) => {
-    const crewAndCast = getMovieCrewAndCast(movie, graph);
-    crewAndCast.forEach((person) => {
-      const latifahMovies = get(people, person.id) || [];
-      set(people, person.id, uniq([...latifahMovies, movie]));
+    values(movies).forEach((movie) => {
+      const crewAndCast = getMovieCrewAndCast(movie, graph);
+      crewAndCast.forEach((person) => {
+        const personMovies = get(people, person.id) || [];
+        set(people, person.id, uniq([...personMovies, movie]));
+      });
     });
-  });
 
-  console.log("Finished constructing cache for Queen Latifah");
-  return {
-    personId: QUEEN_LATIFAH,
-    movies: movies,
-    people: people,
+    console.log(`Finished constructing cache for ${person.name}`);
+    return {
+      personId: personId,
+      movies: movies,
+      people: people,
+    };
   };
-};

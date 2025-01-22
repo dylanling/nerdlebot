@@ -18,7 +18,7 @@ const addMovie = (battle: Battle, battleMovie: BattleMovie, movie: Movie): Battl
   return {
     ...battle,
     movies: [battleMovie, ...battle.movies],
-    usedMovieIds: !!movie.id ? [movie.id, ...battle.usedMovieIds] : battle.usedMovieIds,
+    usedMovieIds: !!movie?.id ? [movie.id, ...battle.usedMovieIds] : battle.usedMovieIds,
   };
 };
 

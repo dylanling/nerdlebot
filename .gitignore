@@ -19,3 +19,5 @@ Shared\ (Extension)/Resources/dist/
 
 # output files
 static/*
+dist/*
+
